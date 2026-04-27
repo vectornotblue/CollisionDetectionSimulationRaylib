@@ -5,6 +5,10 @@ const int WIDTH = 900;
 const int HEIGHT = 900;
 bool isPaused = true;
 float ballMaxVelocity = 100.0f;
+int ballCount = 10;
+int ballSize = 20;
+
+
 class Ball{
 public:
         Vector2 position, velocity;
@@ -34,27 +38,38 @@ public:
     
 };
 
+std::vector<Ball> balls;
+
+void SpawnBalls(){
+    balls.reserve(ballCount);
+    for(int i = 0; i<ballCount; i++){
+        Vector2 randomPos = (Vector2){(float)GetRandomValue(ballSize, WIDTH-ballSize), (float)GetRandomValue(ballSize,HEIGHT-ballSize)};
+        Vector2 randomVel = (Vector2){(float)GetRandomValue(-ballMaxVelocity,ballMaxVelocity), (float)GetRandomValue(-ballMaxVelocity,ballMaxVelocity)};
+        balls.emplace_back(randomPos, randomVel, ballSize, BLUE);
+    }
+}
+
 int main() 
 {
     InitWindow(WIDTH, HEIGHT, "Collision Detection Simulation Raylib");
     SetTargetFPS(60);
-    int ballCount = 10;
-    int ballSize = 20;
-    std::vector<Ball> balls;
-    balls.reserve(ballCount);
-    for(int i = 0; i<ballCount; i++){
-        Vector2 randomPos = (Vector2){(float)GetRandomValue(0,(int)WIDTH), (float)GetRandomValue(0,(int)HEIGHT)};
-        Vector2 randomVel = (Vector2){(float)GetRandomValue(0,ballMaxVelocity), (float)GetRandomValue(0,ballMaxVelocity)};
-        balls.emplace_back(randomPos, randomVel, ballSize, BLUE);
-    }
+
+    SpawnBalls();
+    
     while (!WindowShouldClose())
     {
         if(IsKeyPressed(KEY_SPACE)){
             isPaused = !isPaused;
         }
+        if(IsKeyPressed(KEY_R)){
+            balls.clear();
+            SpawnBalls();
+        }
+        
         float deltaTime = GetFrameTime();
         BeginDrawing();
             ClearBackground(BLACK);
+            DrawText("SPACE - Pause/Resume    R - Restart", 10,10,30,BLUE);
             for(auto& ball : balls){
                 if(!isPaused){
                     ball.move_ball(deltaTime);
