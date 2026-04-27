@@ -1,5 +1,6 @@
 #include <raylib.h>
 #include <vector>
+#include <math.h>
 
 const int WIDTH = 900;
 const int HEIGHT = 900;
@@ -12,28 +13,32 @@ int ballSize = 20;
 class Ball{
 public:
         Vector2 position, velocity;
-        float size;
+        float size, mass;
         Color color;
     Ball(Vector2 position, Vector2 velocity, float size, Color color){
         this->position = position;
         this->velocity = velocity;
         this->size = size;
+        mass = pow(size,2);
         this->color = color;
     }
     void draw_ball(){
         DrawCircle(position.x, position.y, size, color);
     }
     void move_ball(float deltaTime){
-        check_Wall_Colission();
+        check_Wall_Collision();
         position = (Vector2){velocity.x*deltaTime+position.x, velocity.y*deltaTime+position.y};
     }
-    void check_Wall_Colission(){
+    void check_Wall_Collision(){
         if((position.x-size)<=0 || (position.x+size)>=WIDTH){
             velocity.x = -velocity.x;
         }
         if((position.y-size)<=0 || (position.y+size)>=HEIGHT){
             velocity.y = -velocity.y;
         }
+    }
+    void check_Ball_Collision(){
+        //code here
     }
     
 };
