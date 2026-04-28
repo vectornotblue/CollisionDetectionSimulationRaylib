@@ -2,13 +2,19 @@
 #include <vector>
 #include <math.h>
 
-const int WIDTH = 900;
+const int WIDTH = 1200;
 const int HEIGHT = 900;
-bool isPaused = true;
-float ballMaxVelocity = 100.0f;
-int ballCount = 10;
-int ballSize = 20;
+const int OFFSET = 50;
 
+bool isPaused = true;
+bool isGizmoOn = true;
+
+float ballMaxVelocity = 100.0f;
+float ballMaxSize = 30.0f;
+float ballMinSize = 10.0f;
+int ballCount = 20;
+int ballSize = 20;
+int collisionChecks = 0;
 
 class Ball{
 public:
@@ -23,7 +29,7 @@ public:
         this->color = color;
     }
     void draw_ball(){
-        DrawCircle(position.x, position.y, size, color);
+        DrawCircle(position.x, position.y+OFFSET, size, color);
     }
     void move_ball(float deltaTime){
         check_Wall_Collision();
@@ -55,9 +61,10 @@ std::vector<Ball> balls;
 void SpawnBalls(){
     balls.reserve(ballCount);
     for(int i = 0; i<ballCount; i++){
+        float randomSize = GetRandomValue(ballMinSize, ballMaxSize);
         Vector2 randomPos = (Vector2){(float)GetRandomValue(ballSize, WIDTH-ballSize), (float)GetRandomValue(ballSize,HEIGHT-ballSize)};
         Vector2 randomVel = (Vector2){(float)GetRandomValue(-ballMaxVelocity,ballMaxVelocity), (float)GetRandomValue(-ballMaxVelocity,ballMaxVelocity)};
-        balls.emplace_back(randomPos, randomVel, ballSize, BLUE);
+        balls.emplace_back(randomPos, randomVel, randomSize, BLUE);
     }
 }
 
@@ -102,10 +109,14 @@ void CollisionsCheck(){
             if(i == j){
                 continue;
             }
+            collisionChecks += 1;
             Vector2 ball1pos = balls[i].get_Position(); 
             float ball1size = balls[i].get_Size();
             Vector2 ball2pos = balls[j].get_Position();
             float ball2size = balls[j].get_Size();
+            if(isGizmoOn){
+                DrawLineEx({ball1pos.x,ball1pos.y+OFFSET}, {ball2pos.x, ball2pos.y+OFFSET}, 1, RED);
+            }
             float overlap = (ball1size+ball2size) - sqrt(pow(ball1pos.x-ball2pos.x, 2)+pow(ball1pos.y-ball2pos.y, 2));
             if(overlap>= 0){
                 CollideBalls(i, j, overlap);
@@ -116,7 +127,7 @@ void CollisionsCheck(){
 
 int main() 
 {
-    InitWindow(WIDTH, HEIGHT, "Collision Detection Simulation Raylib");
+    InitWindow(WIDTH, HEIGHT+OFFSET, "Collision Detection Simulation Raylib");
     SetTargetFPS(60);
 
     SpawnBalls();
@@ -126,6 +137,9 @@ int main()
         if(IsKeyPressed(KEY_SPACE)){
             isPaused = !isPaused;
         }
+         if(IsKeyPressed(KEY_G)){
+            isGizmoOn = !isGizmoOn;
+        }
         if(IsKeyPressed(KEY_R)){
             balls.clear();
             SpawnBalls();
@@ -134,15 +148,17 @@ int main()
         float deltaTime = GetFrameTime();
         BeginDrawing();
             ClearBackground(BLACK);
-            DrawText("SPACE - Pause/Resume    R - Restart", 10,10,30,BLUE);
-            
+            DrawText(TextFormat("SPACE - Pause/Resume    R - Restart       G - Gizmos      CPF - %d", collisionChecks), 10,10,30,BLUE);
+            DrawLineEx({0, OFFSET}, {WIDTH, OFFSET}, 2, BLUE);
+            collisionChecks = 0;
+            CollisionsCheck();
             for(auto& ball : balls){
                 if(!isPaused){
                     ball.move_ball(deltaTime);
                 }
                 ball.draw_ball();
             }
-            CollisionsCheck();
+            
         EndDrawing();
     }
     
