@@ -1,6 +1,7 @@
 #include <raylib.h>
 #include <vector>
 #include <math.h>
+#include <algorithm>
 
 const int WIDTH = 1200;
 const int HEIGHT = 850;
@@ -20,7 +21,6 @@ int collisionChecks = 0;
 
 enum OptimisationAlgorithm{ //length is hardcoded somewhere
     NONE, 
-    XSORT, 
     SNP, //SWEEP AND PRUNE
     UGRID, // UNIFORM GRID
     QUADTREE,
@@ -122,7 +122,7 @@ void CollideBalls(int i, int j, float overlap){
 
 void CollisionsCheck(){
     for(int i = 0; i < ballCount; i++){
-        for (int j = 1; j < ballCount; j++){
+        for (int j = i+1; j < ballCount; j++){
             if(i == j){
                 continue;
             }
@@ -139,11 +139,29 @@ void CollisionsCheck(){
                 balls[i].set_Color(collisionColor);
                 balls[j].set_Color(collisionColor);
                 CollideBalls(i, j, overlap);
+                
             } 
             
         }
     }
 }
+
+
+void CollisionsCheckSNP(){
+    for(int i = 0; i < ballCount; i++){
+        for(int j = 1; j < ballCount; j++){
+            float posx1 = balls[i].get_Position().x;
+            float posx2 = balls[j].get_Position().x;
+            if(posx1>posx2){
+                std::swap(balls[i], balls[j]);
+            }
+        }
+    }
+    
+}
+
+
+
 
 int main() 
 {
@@ -158,7 +176,7 @@ int main()
             isPaused = !isPaused;
         }
         if(IsKeyPressed(KEY_O)){
-            currentOptAlg = (currentOptAlg+1)%6;
+            currentOptAlg = (currentOptAlg+1)%5; //////////////////////////////////////////// HARDCODED ENUM LENGHT
         }
          if(IsKeyPressed(KEY_G)){
             isGizmoOn = !isGizmoOn;
@@ -172,34 +190,38 @@ int main()
         BeginDrawing();
             ClearBackground(BLACK);
             DrawText(TextFormat("SPACE - Pause/Resume    R - Restart       G - Gizmos      CPF - %d", collisionChecks), 10,10,30,BLUE);
+            collisionChecks = 0;
             switch (currentOptAlg)
             {
             case 0:
                 DrawText(TextFormat("O - OPTIMISATION ALGORITHM : NONE"), 10,60,30,BLUE);
+                CollisionsCheck();
                 break;
-            case 1:
-                DrawText(TextFormat("O - OPTIMISATION ALGORITHM : X-SORT"), 10,60,30,BLUE);
-                break;
-            case 2: 
+            case 1: 
                 DrawText(TextFormat("O - OPTIMISATION ALGORITHM : SWEEP AND PRUNE"), 10,60,30,BLUE);
+                CollisionsCheckSNP();
+                break;
+            case 2:
+                DrawText(TextFormat("O - OPTIMISATION ALGORITHM : UNIFORM GRID"), 10,60,30,BLUE);
+                CollisionsCheck();
                 break;
             case 3:
-                DrawText(TextFormat("O - OPTIMISATION ALGORITHM : UNIFORM GRID"), 10,60,30,BLUE);
+                DrawText(TextFormat("O - OPTIMISATION ALGORITHM : QUADTREE"), 10,60,30,BLUE);
+                CollisionsCheck();
                 break;
             case 4:
-                DrawText(TextFormat("O - OPTIMISATION ALGORITHM : QUADTREE"), 10,60,30,BLUE);
-                break;
-            case 5:
                 DrawText(TextFormat("O - OPTIMISATION ALGORITHM : K-D TREE"), 10,60,30,BLUE);
+                CollisionsCheck();
                 break;
             
             default:
+                CollisionsCheck();
                 break;
             }
 
             DrawLineEx({0, OFFSET}, {WIDTH, OFFSET}, 2, BLUE);
-            collisionChecks = 0;
-            CollisionsCheck();
+            
+            
             for(auto& ball : balls){
                 if(!isPaused){
                     ball.move_ball(deltaTime);
