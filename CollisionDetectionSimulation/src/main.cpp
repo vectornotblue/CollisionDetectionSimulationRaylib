@@ -3,18 +3,31 @@
 #include <math.h>
 
 const int WIDTH = 1200;
-const int HEIGHT = 900;
-const int OFFSET = 50;
+const int HEIGHT = 850;
+const int OFFSET = 100;
 
 bool isPaused = true;
 bool isGizmoOn = true;
 
+Color ballColor = BLUE;
+Color collisionColor = WHITE;
 float ballMaxVelocity = 100.0f;
 float ballMaxSize = 30.0f;
 float ballMinSize = 10.0f;
 int ballCount = 20;
 int ballSize = 20;
 int collisionChecks = 0;
+
+enum OptimisationAlgorithm{ //length is hardcoded somewhere
+    NONE, 
+    XSORT, 
+    SNP, //SWEEP AND PRUNE
+    UGRID, // UNIFORM GRID
+    QUADTREE,
+    KDTREE
+};
+
+int currentOptAlg = NONE;
 
 class Ball{
 public:
@@ -30,6 +43,7 @@ public:
     }
     void draw_ball(){
         DrawCircle(position.x, position.y+OFFSET, size, color);
+        color = ballColor;
     }
     void move_ball(float deltaTime){
         check_Wall_Collision();
@@ -52,6 +66,9 @@ public:
     void set_Position(Vector2 newPosition){
         position = newPosition;
     }
+    void set_Color(Color newColor){
+        color = newColor;
+    }
     
     
 };
@@ -64,7 +81,7 @@ void SpawnBalls(){
         float randomSize = GetRandomValue(ballMinSize, ballMaxSize);
         Vector2 randomPos = (Vector2){(float)GetRandomValue(ballSize, WIDTH-ballSize), (float)GetRandomValue(ballSize,HEIGHT-ballSize)};
         Vector2 randomVel = (Vector2){(float)GetRandomValue(-ballMaxVelocity,ballMaxVelocity), (float)GetRandomValue(-ballMaxVelocity,ballMaxVelocity)};
-        balls.emplace_back(randomPos, randomVel, randomSize, BLUE);
+        balls.emplace_back(randomPos, randomVel, randomSize, ballColor);
     }
 }
 
@@ -119,8 +136,11 @@ void CollisionsCheck(){
             }
             float overlap = (ball1size+ball2size) - sqrt(pow(ball1pos.x-ball2pos.x, 2)+pow(ball1pos.y-ball2pos.y, 2));
             if(overlap>= 0){
+                balls[i].set_Color(collisionColor);
+                balls[j].set_Color(collisionColor);
                 CollideBalls(i, j, overlap);
             } 
+            
         }
     }
 }
@@ -137,6 +157,9 @@ int main()
         if(IsKeyPressed(KEY_SPACE)){
             isPaused = !isPaused;
         }
+        if(IsKeyPressed(KEY_O)){
+            currentOptAlg = (currentOptAlg+1)%6;
+        }
          if(IsKeyPressed(KEY_G)){
             isGizmoOn = !isGizmoOn;
         }
@@ -149,6 +172,31 @@ int main()
         BeginDrawing();
             ClearBackground(BLACK);
             DrawText(TextFormat("SPACE - Pause/Resume    R - Restart       G - Gizmos      CPF - %d", collisionChecks), 10,10,30,BLUE);
+            switch (currentOptAlg)
+            {
+            case 0:
+                DrawText(TextFormat("O - OPTIMISATION ALGORITHM : NONE"), 10,60,30,BLUE);
+                break;
+            case 1:
+                DrawText(TextFormat("O - OPTIMISATION ALGORITHM : X-SORT"), 10,60,30,BLUE);
+                break;
+            case 2: 
+                DrawText(TextFormat("O - OPTIMISATION ALGORITHM : SWEEP AND PRUNE"), 10,60,30,BLUE);
+                break;
+            case 3:
+                DrawText(TextFormat("O - OPTIMISATION ALGORITHM : UNIFORM GRID"), 10,60,30,BLUE);
+                break;
+            case 4:
+                DrawText(TextFormat("O - OPTIMISATION ALGORITHM : QUADTREE"), 10,60,30,BLUE);
+                break;
+            case 5:
+                DrawText(TextFormat("O - OPTIMISATION ALGORITHM : K-D TREE"), 10,60,30,BLUE);
+                break;
+            
+            default:
+                break;
+            }
+
             DrawLineEx({0, OFFSET}, {WIDTH, OFFSET}, 2, BLUE);
             collisionChecks = 0;
             CollisionsCheck();
