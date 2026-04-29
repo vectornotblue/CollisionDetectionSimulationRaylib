@@ -5,3 +5,6 @@ Red lines represent collision checks that are happening between a pair of balls 
 Collision handling implemented by following Chad Berchek's "2-Dimensional Elastic Collisions without Trigonometry" solution.
 
 With Sweep and Prune (SAP) algorithm collision checks per frame dropped from 4950 to around 300 for 100 balls. 
+
+Youtube video: https://www.youtube.com/watch?v=2ssbzJ6lYqU
+
