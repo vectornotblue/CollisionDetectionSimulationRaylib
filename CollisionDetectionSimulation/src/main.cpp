@@ -8,11 +8,11 @@ const int HEIGHT = 980;
 const int OFFSET = 100;
 
 
-bool isRecording = true;
-float FPS = 60.0F;
-float recordTime = 10.0f; //in seconds
+bool isRecording = false;
+float FPS = 30.0f;
+float recordTime = 30.0f; //in seconds
 bool isPaused = false;
-bool isGizmoOn = false;
+bool isGizmoOn = true;
 
 Color ballColor = BLUE;
 Color collisionColor = WHITE;
@@ -31,7 +31,7 @@ enum OptimisationAlgorithm{ //length is hardcoded somewhere
     KDTREE
 };
 
-int currentOptAlg = NONE;
+int currentOptAlg = SAP;
 
 class Ball{
 public:
@@ -83,7 +83,7 @@ void SpawnBalls(){
     balls.reserve(ballCount);
     for(int i = 0; i<ballCount; i++){
         float randomSize = (float)GetRandomValue(ballMinSize*10, ballMaxSize*10)/10.0;
-        Vector2 randomPos = (Vector2){(float)GetRandomValue(ballSize, WIDTH-ballSize), (float)GetRandomValue(ballSize,HEIGHT-ballSize)};
+        Vector2 randomPos = (Vector2){(float)GetRandomValue(ballSize, WIDTH-ballSize), (float)GetRandomValue(ballSize,HEIGHT-ballSize-50)};
         Vector2 randomVel = (Vector2){(float)GetRandomValue(-ballMaxVelocity,ballMaxVelocity), (float)GetRandomValue(-ballMaxVelocity,ballMaxVelocity)};
         balls.emplace_back(randomPos, randomVel, randomSize, ballColor);
     }
@@ -186,6 +186,8 @@ int main()
 
     SpawnBalls();
     int frame = 0;
+    isGizmoOn = false;
+    currentOptAlg = NONE;
     while (!WindowShouldClose())
     {
         if(IsKeyPressed(KEY_SPACE)){
@@ -246,15 +248,25 @@ int main()
             }
             
         EndDrawing();
-        Image img = LoadImageFromScreen();
-        ExportImage(img, TextFormat("frames/frame_%06d.png", frame));
-        UnloadImage(img);
-        frame++;
-        if (frame > (recordTime*FPS)){
-            break;
+        if(isRecording){
+            Image img = LoadImageFromScreen();
+            ExportImage(img, TextFormat("frames/frame_%06d.png", frame));
+            UnloadImage(img);
+            frame++;
+            if(frame == (10*FPS)){
+                isGizmoOn = true;
+            }
+            if(frame == (20*FPS)){
+                currentOptAlg = SAP;
+            }
+            if (frame > (recordTime*FPS)){
+                break;
+            }
         }
     }
     
     CloseWindow();
     return 0;
 }
+
+// command line frames to mp4 container: ffmpeg -framerate 60 -i frame_%06d.png -c:v libx264 -crf 18 -preset slow -pix_fmt yuv420p output.mp4
