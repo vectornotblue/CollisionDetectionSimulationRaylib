@@ -3,12 +3,16 @@
 #include <math.h>
 #include <algorithm>
 
-const int WIDTH = 1200;
-const int HEIGHT = 850;
+const int WIDTH = 1920;
+const int HEIGHT = 980;
 const int OFFSET = 100;
 
-bool isPaused = true;
-bool isGizmoOn = true;
+
+bool isRecording = true;
+float FPS = 60.0F;
+float recordTime = 10.0f; //in seconds
+bool isPaused = false;
+bool isGizmoOn = false;
 
 Color ballColor = BLUE;
 Color collisionColor = WHITE;
@@ -178,10 +182,10 @@ void CollisionsCheckSAP(){
 int main() 
 {
     InitWindow(WIDTH, HEIGHT+OFFSET, "Collision Detection Simulation Raylib");
-    SetTargetFPS(60);
+    SetTargetFPS(FPS);
 
     SpawnBalls();
-    
+    int frame = 0;
     while (!WindowShouldClose())
     {
         if(IsKeyPressed(KEY_SPACE)){
@@ -198,7 +202,7 @@ int main()
             SpawnBalls();
         }
         
-        float deltaTime = GetFrameTime();
+        float deltaTime = isRecording ? (1.0f/FPS) : GetFrameTime();
         BeginDrawing();
             ClearBackground(BLACK);
             DrawText(TextFormat("SPACE - Pause/Resume    R - Restart       G - Gizmos      CPF - %d", collisionChecks), 10,10,30,BLUE);
@@ -242,7 +246,15 @@ int main()
             }
             
         EndDrawing();
+        Image img = LoadImageFromScreen();
+        ExportImage(img, TextFormat("frames/frame_%06d.png", frame));
+        UnloadImage(img);
+        frame++;
+        if (frame > (recordTime*FPS)){
+            break;
+        }
     }
     
     CloseWindow();
+    return 0;
 }
