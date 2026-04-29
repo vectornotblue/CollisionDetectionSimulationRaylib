@@ -15,13 +15,13 @@ Color collisionColor = WHITE;
 float ballMaxVelocity = 100.0f;
 float ballMaxSize = 30.0f;
 float ballMinSize = 10.0f;
-int ballCount = 20;
+int ballCount = 100;
 int ballSize = 20;
 int collisionChecks = 0;
 
 enum OptimisationAlgorithm{ //length is hardcoded somewhere
     NONE, 
-    SNP, //SWEEP AND PRUNE
+    SAP, //SWEEP AND PRUNE
     UGRID, // UNIFORM GRID
     QUADTREE,
     KDTREE
@@ -78,22 +78,23 @@ std::vector<Ball> balls;
 void SpawnBalls(){
     balls.reserve(ballCount);
     for(int i = 0; i<ballCount; i++){
-        float randomSize = GetRandomValue(ballMinSize, ballMaxSize);
+        float randomSize = (float)GetRandomValue(ballMinSize*10, ballMaxSize*10)/10.0;
         Vector2 randomPos = (Vector2){(float)GetRandomValue(ballSize, WIDTH-ballSize), (float)GetRandomValue(ballSize,HEIGHT-ballSize)};
         Vector2 randomVel = (Vector2){(float)GetRandomValue(-ballMaxVelocity,ballMaxVelocity), (float)GetRandomValue(-ballMaxVelocity,ballMaxVelocity)};
         balls.emplace_back(randomPos, randomVel, randomSize, ballColor);
     }
 }
 
-void CollideBalls(int i, int j, float overlap){
+void CollideBalls(Ball& ball1, Ball& ball2, float overlap){
 
-    Vector2 vel1 = balls[i].get_Velocity();//beginning velocity
-    Vector2 vel2 = balls[j].get_Velocity();
-    Vector2 pos1 = balls[i].get_Position();
-    Vector2 pos2 = balls[j].get_Position();
-    float mass1 = pow(balls[i].get_Size(),2);
-    float mass2 = pow(balls[j].get_Size(),2);
+    Vector2 vel1 = ball1.get_Velocity();//beginning velocity
+    Vector2 vel2 = ball2.get_Velocity();
+    Vector2 pos1 = ball1.get_Position();
+    Vector2 pos2 = ball2.get_Position();
+    float mass1 = pow(ball1.get_Size(),2); 
+    float mass2 = pow(ball2.get_Size(),2);
     float mn = sqrt(pow(pos2.x-pos1.x,2) + pow(pos2.y-pos1.y,2)); //magnitude of normal
+    if(mn == 0) return; 
     Vector2 un = (Vector2){(pos2.x-pos1.x)/mn,(pos2.y-pos1.y)/mn}; //unified normal
     Vector2 ut = (Vector2){-un.y, un.x}; //unified tangent;
     
@@ -111,13 +112,30 @@ void CollideBalls(int i, int j, float overlap){
     Vector2 vel2t = (Vector2){ut.x*vvel2t, ut.y*vvel2t};
     Vector2 vel1f = (Vector2){vel1n.x+vel1t.x, vel1n.y+vel1t.y};//final vector = final normal + final tangent components
     Vector2 vel2f = (Vector2){vel2n.x+vel2t.x, vel2n.y+vel2t.y};
-    balls[i].set_Velocity(vel1f);
-    balls[j].set_Velocity(vel2f);
+    ball1.set_Velocity(vel1f);
+    ball2.set_Velocity(vel2f);
     //fix overlap
     float pos1fix = -1*overlap*(mass2/(mass1+mass2));
     float pos2fix = overlap*(mass1/(mass1+mass2));
-    balls[i].set_Position((Vector2){pos1.x+pos1fix*un.x, pos1.y+pos1fix*un.y});
-    balls[j].set_Position((Vector2){pos2.x+pos2fix*un.x, pos2.y+pos2fix*un.y});
+    ball1.set_Position((Vector2){pos1.x+pos1fix*un.x, pos1.y+pos1fix*un.y});
+    ball2.set_Position((Vector2){pos2.x+pos2fix*un.x, pos2.y+pos2fix*un.y});
+}
+
+void CheckOverlap(Ball& ball1, Ball& ball2){
+    collisionChecks += 1;
+    Vector2 ball1pos = ball1.get_Position(); 
+    float ball1size = ball1.get_Size();
+    Vector2 ball2pos = ball2.get_Position();
+    float ball2size = ball2.get_Size();
+    if(isGizmoOn){
+        DrawLineEx({ball1pos.x,ball1pos.y+OFFSET}, {ball2pos.x, ball2pos.y+OFFSET}, 1, RED);
+    }
+    float overlap = (ball1size+ball2size) - sqrt(pow(ball1pos.x-ball2pos.x, 2)+pow(ball1pos.y-ball2pos.y, 2));
+    if(overlap>= 0){
+        ball1.set_Color(collisionColor);
+        ball2.set_Color(collisionColor);
+        CollideBalls(ball1, ball2, overlap);
+    }
 }
 
 void CollisionsCheck(){
@@ -126,39 +144,33 @@ void CollisionsCheck(){
             if(i == j){
                 continue;
             }
-            collisionChecks += 1;
-            Vector2 ball1pos = balls[i].get_Position(); 
-            float ball1size = balls[i].get_Size();
-            Vector2 ball2pos = balls[j].get_Position();
-            float ball2size = balls[j].get_Size();
-            if(isGizmoOn){
-                DrawLineEx({ball1pos.x,ball1pos.y+OFFSET}, {ball2pos.x, ball2pos.y+OFFSET}, 1, RED);
-            }
-            float overlap = (ball1size+ball2size) - sqrt(pow(ball1pos.x-ball2pos.x, 2)+pow(ball1pos.y-ball2pos.y, 2));
-            if(overlap>= 0){
-                balls[i].set_Color(collisionColor);
-                balls[j].set_Color(collisionColor);
-                CollideBalls(i, j, overlap);
-                
-            } 
+            CheckOverlap(balls[i], balls[j]);
             
         }
     }
 }
 
-
-void CollisionsCheckSNP(){
-    for(int i = 0; i < ballCount; i++){
-        for(int j = 1; j < ballCount; j++){
-            float posx1 = balls[i].get_Position().x;
-            float posx2 = balls[j].get_Position().x;
-            if(posx1>posx2){
-                std::swap(balls[i], balls[j]);
+bool isX1lessThanX2(Ball& ball1, Ball& ball2){
+    return ball1.get_Position().x < ball2.get_Position().x;  
+}
+void CollisionsCheckSAP(){
+    std::sort(balls.begin(), balls.end(), isX1lessThanX2);
+    for (int i = 0; i < ballCount; i++){
+        for(int j = 1+i; j < ballCount; j++){
+            float size1 = balls[i].get_Size();
+            float size2 = balls[j].get_Size();
+            float pos1 = balls[i].get_Position().x;
+            float pos2 = balls[j].get_Position().x;
+            if((pos2-size2)>(pos1+size1)){
+                break;
             }
+
+            CheckOverlap(balls[i], balls[j]);
         }
     }
-    
 }
+
+
 
 
 
@@ -193,23 +205,23 @@ int main()
             collisionChecks = 0;
             switch (currentOptAlg)
             {
-            case 0:
+            case NONE:
                 DrawText(TextFormat("O - OPTIMISATION ALGORITHM : NONE"), 10,60,30,BLUE);
                 CollisionsCheck();
                 break;
-            case 1: 
+            case SAP: 
                 DrawText(TextFormat("O - OPTIMISATION ALGORITHM : SWEEP AND PRUNE"), 10,60,30,BLUE);
-                CollisionsCheckSNP();
+                CollisionsCheckSAP();
                 break;
-            case 2:
+            case UGRID:
                 DrawText(TextFormat("O - OPTIMISATION ALGORITHM : UNIFORM GRID"), 10,60,30,BLUE);
                 CollisionsCheck();
                 break;
-            case 3:
+            case QUADTREE:
                 DrawText(TextFormat("O - OPTIMISATION ALGORITHM : QUADTREE"), 10,60,30,BLUE);
                 CollisionsCheck();
                 break;
-            case 4:
+            case KDTREE:
                 DrawText(TextFormat("O - OPTIMISATION ALGORITHM : K-D TREE"), 10,60,30,BLUE);
                 CollisionsCheck();
                 break;
